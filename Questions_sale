@@ -65,7 +65,7 @@ select region,
  ) t);
  
  #8.Create a view that stores average revenue per channel per customer type, and query it to find which combination gives the highest average.
-  create view channel_performance as
+ create view channel_performance as
  select channel,
  customer_type, 
  avg(revenue) as avg_revenue 
