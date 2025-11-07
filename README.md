@@ -36,92 +36,96 @@ This dataset contains detailed sales transaction records for various products ac
 
 ## 📊 Potential Use Cases
 
-use mnp;        
-
-select * from `Sales data`;
-rename table sales to S2022;
-select *from sales;
-
+use mnp;
 #1.Write a query to display total sales revenue for each year.
-#(Use the Date column to group by year)
-
-select year(date),sum(Revenue) as total_revenue
-from sales
+select year(date),
+sum(Revenue) as total_revenue 
+from sale 
 group by year(date);
 
-#2.Retrieve the top 3 products based on total units sold across all 3 years.
 
-select Product,sum(Units_Sold) as total_sold 
-from sales
+#2.Retrieve the top 3 products based on total units sold across all 3 years.
+select Product,
+sum(Units_Sold) as total_Unitsold 
+from sale 
 group by Product 
-order by  total_sold desc
+order by  total_Unitsold desc 
 limit 3;
 
-#3.Display year-wise revenue generated from each Sales Channel (Online vs Offline).
-select year(date),Channel,sum(Revenue) as total_revenue
-from sales
+#3.Display year-wise revenue generated from each Sales Channel. 
+select year(date),
+Channel,
+sum(Revenue) as total_revenue 
+from sale 
 group by year(date),Channel;
 
-#4.List the top-performing salesperson for each year based on revenue.
-select salesperson, years ,sum(Revenue) as total_revenue
-from sales
-group by years,salesperson;
-select * from sales;
-
-alter table sales add column years int;
-update sales
+alter table sale add column years int;
+update sale
 set years=year(date);
 
 set sql_safe_updates=0;
+select * from sale;
+ 
 
-#5.Write a query to show total revenue by region, sorted from highest to lowest.
+#4.List the top-performing salesperson for each year based on revenue.
+select salesperson,
+ years,
+ sum(Revenue) as total_revenue
+ from sale
+ group by years,salesperson;
+ 
+ #5.Using a window function, rank the products by revenue within each region.
+  select Region,
+ Product,
+ sum(Revenue) as total_revenue,
+ rank() over(partition by Region order by sum(Revenue) desc) as rank_wise_region 
+ from sale
+ group by Region,Product ;
+ 
+ #6.Display each salesperson’s percent contribution to their region’s total sales using SUM() OVER.
+select salesperson, 
+region,
+sum(revenue) as salesperson_revenue,
+sum(sum(revenue)) over (partition by region) as region_total,
+round(100 * sum(revenue) / sum(sum(revenue)) over (partition by region),2) as percent_contribution
+from sale
+group by salesperson, region;
 
-select Region,sum(Revenue) as total_revenue 
-from sales 
-group by Region 
-order by total_revenue desc;
-
-#6.Retrieve unique Customer Types and the count of orders for each type.
-select * from sales;
-select Customer_Type,count(Units_Sold) as total_order 
-from sales 
-group by Customer_Type;
-
-#7.Find the product with the maximum revenue generated in 2023.
-select years,Product,max(Revenue) as max_revenue  
-from sales 
-group by Product,years
-having years = '2023'
-order by max_revenue desc;
-
-select * from sales;
-alter table sales add column months int;
-update sales
-set months= month(date);
-
-
-#8.Show monthly sales trend of 2024
-#(Extract month from Date column and sum revenue)
-
-select years,months,sum(Revenue) as total_reveneu
-from sales 
-group by months,years
-having years='2024';
-
-#9.Display total units sold for each product in North region only.
-
-select Product,sum(Units_Sold) as total_sold
-from sales 
-where Region ='North'
-group by Product;
-
-#10. Count the number of Online vs Offline orders in the entire dataset.
-
-select Channel,count(Units_Sold) as total_order 
-from sales
-group by Channel;
+#7.Find the top-performing region based on total revenue using a subquery.
+select region,
+ sum(revenue) as total_revenue 
+ from sale 
+ group by region having sum(revenue) = 
+ (select max(region_total) from 
+ (select region, 
+ sum(revenue) as region_total
+ from sale  
+ group by region  
+ ) t);
+ 
+ #8.Create a view that stores average revenue per channel per customer type, and query it to find which combination gives the highest average.
+  create view channel_performance as
+ select channel,
+ customer_type, 
+ avg(revenue) as avg_revenue 
+ from sale
+ group by channel, customer_type;
+ 
+ #9.Find products that perform better in online than offline channels.
+ select  product,
+sum(case when channel = 'online' then revenue else 0 end) as online_revenue,
+sum(case when channel = 'offline' then revenue else 0 end) as offline_revenue 
+from sale
+group by product
+having online_revenue > offline_revenue;
 
 
+#10.Identify seasonal trends: find average monthly revenue by product to detect seasonality.
+select product,
+date_format(date,'%y-%m') as y_month,
+avg(revenue) as average_revenue 
+from sale 
+group by product,y_month;
 
 
 ## ✍️ Author
